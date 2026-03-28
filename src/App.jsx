@@ -13,7 +13,13 @@ function getStoredRecord() {
     return null
   }
 
-  const savedRecord = window.localStorage.getItem(STORAGE_KEY)
+  let savedRecord = null
+
+  try {
+    savedRecord = window.localStorage.getItem(STORAGE_KEY)
+  } catch {
+    return null
+  }
 
   if (!savedRecord) {
     return null
@@ -25,7 +31,12 @@ function getStoredRecord() {
     const hasValidCity = typeof parsedRecord.city === 'string' && parsedRecord.city.length > 0
 
     if (!hasValidScore || !hasValidCity) {
-      window.localStorage.removeItem(STORAGE_KEY)
+      try {
+        window.localStorage.removeItem(STORAGE_KEY)
+      } catch {
+        return null
+      }
+
       return null
     }
 
@@ -34,8 +45,25 @@ function getStoredRecord() {
       city: parsedRecord.city,
     }
   } catch {
-    window.localStorage.removeItem(STORAGE_KEY)
+    try {
+      window.localStorage.removeItem(STORAGE_KEY)
+    } catch {
+      return null
+    }
+
     return null
+  }
+}
+
+function saveStoredRecord(record) {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  try {
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(record))
+  } catch {
+    // Ignore storage write failures so the tracker keeps working.
   }
 }
 
@@ -144,13 +172,10 @@ function App() {
       return
     }
 
-    localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify({
-        score: trackedScore,
-        city: trackedCity,
-      }),
-    )
+    saveStoredRecord({
+      score: trackedScore,
+      city: trackedCity,
+    })
   }, [trackedCity, trackedScore])
 
   function handleScoreChange(event) {
@@ -181,15 +206,21 @@ function App() {
           setLocationState('ready')
           setLocationMessage(`Current location attached: ${city}.`)
         } catch {
-          setCurrentCity('')
           setLocationState('error')
-          setLocationMessage('Location permission worked, but city lookup failed. Please try again.')
+          setLocationMessage(
+            currentCity
+              ? `Could not refresh location. Keeping current city: ${currentCity}.`
+              : 'Location permission worked, but city lookup failed. Please try again.',
+          )
         }
       },
       () => {
-        setCurrentCity('')
         setLocationState('error')
-        setLocationMessage('Location is required before you can add a mood record.')
+        setLocationMessage(
+          currentCity
+            ? `Location refresh failed. Keeping current city: ${currentCity}.`
+            : 'Location is required before you can add a mood record.',
+        )
       },
       {
         enableHighAccuracy: false,
