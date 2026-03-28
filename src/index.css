@@ -27,3 +27,30 @@ a {
 #root {
   min-height: 100vh;
 }
+
+@keyframes mood-shake {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+
+  20% {
+    transform: translate3d(-2px, 0, 0);
+  }
+
+  40% {
+    transform: translate3d(2px, 0, 0);
+  }
+
+  60% {
+    transform: translate3d(-3px, 0, 0);
+  }
+
+  80% {
+    transform: translate3d(3px, 0, 0);
+  }
+}
+
+.mood-shake {
+  animation: mood-shake 0.24s linear infinite;
+}
