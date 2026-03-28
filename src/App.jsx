@@ -1,10 +1,3 @@
-const toolkit = [
-  'Vite 8 scaffold',
-  'React 19 entrypoint',
-  'Tailwind CSS 4',
-  'daisyUI components',
-]
-
 function App() {
   return (
     <main className="relative isolate overflow-hidden">
@@ -15,52 +8,10 @@ function App() {
       <section className="mx-auto flex min-h-screen max-w-6xl items-center px-6 py-16 sm:px-10 lg:px-12">
         <div className="grid w-full gap-10 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
           <div className="space-y-8">
-            <div className="badge badge-warning badge-lg gap-2 border border-stone-900/10 bg-white/70 px-4 py-4 text-stone-800 shadow-sm backdrop-blur">
-              Fresh stack initialized
-            </div>
-
             <div className="space-y-5">
-              <p className="text-sm font-semibold uppercase tracking-[0.35em] text-stone-500">
-                mood-loc starter
-              </p>
               <h1 className="max-w-3xl text-5xl font-black leading-none text-stone-900 sm:text-6xl lg:text-7xl">
-                Vite, React, Tailwind 4, and daisyUI are wired and ready.
+                Hello, I'm Mood-loc, your personal mood tracker
               </h1>
-              <p className="max-w-2xl text-lg leading-8 text-stone-700 sm:text-xl">
-                The default Vite demo has been replaced with a clean launchpad so
-                you can start building immediately without legacy starter styles
-                or Tailwind 3 setup files.
-              </p>
-            </div>
-
-            <div className="flex flex-col gap-3 sm:flex-row">
-              <a
-                className="btn btn-primary btn-lg rounded-full px-8 shadow-lg shadow-orange-300/40"
-                href="https://vite.dev/guide/"
-                target="_blank"
-                rel="noreferrer"
-              >
-                Vite docs
-              </a>
-              <a
-                className="btn btn-outline btn-lg rounded-full border-stone-900/15 bg-white/60 px-8 text-stone-900 backdrop-blur hover:bg-white"
-                href="https://daisyui.com/docs/install/"
-                target="_blank"
-                rel="noreferrer"
-              >
-                daisyUI docs
-              </a>
-            </div>
-
-            <div className="flex flex-wrap gap-3">
-              {toolkit.map((item) => (
-                <span
-                  key={item}
-                  className="rounded-full border border-stone-900/10 bg-white/65 px-4 py-2 text-sm font-medium text-stone-700 shadow-sm backdrop-blur"
-                >
-                  {item}
-                </span>
-              ))}
             </div>
           </div>
 
