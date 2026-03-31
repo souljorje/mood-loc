@@ -1,4 +1,7 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import '@d3-maps/react/index.css'
+import { MapBase, MapFeatures, MapGraticule, MapMesh } from '@d3-maps/react'
+import worldMapData from 'world-atlas/countries-110m.json'
 
 const STORAGE_KEY = 'mood-loc-record'
 
@@ -86,7 +89,8 @@ function getMoodTone(score) {
     return {
       badge: 'Pick a score',
       helper: 'Enter a number from 0 to 10 or use a shortcut.',
-      inputClassName: 'border-stone-300 bg-white/80 text-stone-900 shadow-[0_18px_45px_rgba(120,53,15,0.08)]',
+      inputClassName:
+        'border-stone-300 bg-white/80 text-stone-900 shadow-[0_18px_45px_rgba(120,53,15,0.08)]',
       accentClassName: 'bg-stone-200 text-stone-700',
       panelClassName: 'border-white/70 bg-white/55',
       shouldShake: false,
@@ -97,7 +101,8 @@ function getMoodTone(score) {
     return {
       badge: 'Angry energy',
       helper: 'Low score detected. The field reacts with extra tension.',
-      inputClassName: 'border-rose-500 bg-rose-50 text-rose-900 shadow-[0_20px_50px_rgba(225,29,72,0.2)]',
+      inputClassName:
+        'border-rose-500 bg-rose-50 text-rose-900 shadow-[0_20px_50px_rgba(225,29,72,0.2)]',
       accentClassName: 'bg-rose-500 text-white',
       panelClassName: 'border-rose-200/80 bg-white/75',
       shouldShake: true,
@@ -108,7 +113,8 @@ function getMoodTone(score) {
     return {
       badge: 'Steady middle',
       helper: 'A balanced score keeps the form calm and neutral.',
-      inputClassName: 'border-amber-400 bg-amber-50 text-amber-950 shadow-[0_20px_50px_rgba(245,158,11,0.18)]',
+      inputClassName:
+        'border-amber-400 bg-amber-50 text-amber-950 shadow-[0_20px_50px_rgba(245,158,11,0.18)]',
       accentClassName: 'bg-amber-400 text-amber-950',
       panelClassName: 'border-amber-200/80 bg-white/75',
       shouldShake: false,
@@ -118,7 +124,8 @@ function getMoodTone(score) {
   return {
     badge: 'Bright mood',
     helper: 'High score brings in a warmer, happier glow.',
-    inputClassName: 'border-emerald-500 bg-emerald-50 text-emerald-950 shadow-[0_20px_50px_rgba(16,185,129,0.18)]',
+    inputClassName:
+      'border-emerald-500 bg-emerald-50 text-emerald-950 shadow-[0_20px_50px_rgba(16,185,129,0.18)]',
     accentClassName: 'bg-emerald-500 text-white',
     panelClassName: 'border-emerald-200/80 bg-white/75',
     shouldShake: false,
@@ -163,6 +170,8 @@ function App() {
       ? `Saved location restored: ${storedRecord.city}.`
       : 'Attach your current city to save this mood log.',
   )
+  
+  const mapCardRef = useRef(null)
 
   const numericScore = scoreInput === '' ? null : Number(scoreInput)
   const moodTone = useMemo(() => getMoodTone(numericScore), [numericScore])
@@ -244,30 +253,60 @@ function App() {
 
   return (
     <main className="relative isolate overflow-hidden">
-      <div className="absolute inset-x-0 top-0 -z-10 h-80 bg-[radial-gradient(circle_at_top,_rgba(251,146,60,0.35),_transparent_65%)]" />
-      <div className="absolute right-[-8rem] top-28 -z-10 h-64 w-64 rounded-full bg-amber-300/30 blur-3xl" />
-      <div className="absolute left-[-6rem] top-80 -z-10 h-72 w-72 rounded-full bg-orange-400/20 blur-3xl" />
-
-      <section className="mx-auto flex min-h-screen max-w-6xl items-center px-6 py-16 sm:px-10 lg:px-12">
-        <div className="grid w-full gap-10 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
-          <div className="space-y-6">
-            <div className="space-y-5">
-              <p className="inline-flex rounded-full border border-stone-900/10 bg-white/60 px-4 py-1 text-sm font-semibold uppercase tracking-[0.2em] text-stone-600 backdrop-blur-sm">
-                Mood check-in
-              </p>
-              <h1 className="max-w-3xl text-5xl font-black leading-none text-stone-900 sm:text-6xl lg:text-7xl">
-                Hello, I&apos;m Mood-loc, your personal mood tracker
-              </h1>
-              <p className="max-w-2xl text-lg leading-8 text-stone-700">
-                Log today&apos;s mood with a simple score. Use the numeric input or the quick emotion shortcuts, then track it right from the home page.
-              </p>
-            </div>
+      <section className="mx-auto flex min-h-screen max-w-[1500px] items-center px-6 py-16 sm:px-10 lg:px-12">
+        <div className="w-full space-y-8">
+          <div className="space-y-5">
+            <h1 className="max-w-3xl text-5xl font-black leading-none text-stone-900 sm:text-6xl lg:text-7xl">
+              Hello, I&apos;m your personal mood tracker
+            </h1>
+            <p className="max-w-2xl text-lg leading-8 text-stone-700">
+              Log today&apos;s mood with a simple score and explore the map
+              viewport right beneath the headline as part of the landing
+              experience.
+            </p>
           </div>
 
-          <form
-            className={`rounded-[2rem] border p-6 backdrop-blur-xl transition-all duration-300 sm:p-8 ${moodTone.panelClassName}`}
-            onSubmit={handleSubmit}
-          >
+          <div className="grid gap-10 lg:grid-cols-[minmax(0,1.45fr)_minmax(360px,0.75fr)] lg:items-stretch">
+            <div className="pb-4">
+              <div
+                className="w-full rounded-[2rem] border border-white/70 bg-white/65 p-5 shadow-2xl shadow-orange-950/10 backdrop-blur-xl"
+                ref={mapCardRef}
+              >
+                <MapBase
+                  aria-label="Mood-loc map viewport"
+                  aspectRatio={16 / 9}
+                  className="block aspect-video h-auto w-full overflow-hidden rounded-[1.5rem] bg-[linear-gradient(180deg,_#fff7ed_0%,_#ffedd5_100%)]"
+                  data={worldMapData}
+                  height={900}
+                  width={1600}
+                >
+                  <MapGraticule
+                    stroke="rgba(120, 53, 15, 0.12)"
+                    strokeWidth={0.6}
+                  />
+                  <MapFeatures
+                    fill="#fdba74"
+                    stroke="rgba(194, 65, 12, 0.52)"
+                    strokeWidth={0.55}
+                    styles={{
+                      default: { opacity: 0.96 },
+                      hover: { opacity: 0.82 },
+                      active: { opacity: 1 },
+                    }}
+                  />
+                  <MapMesh
+                    fill="none"
+                    stroke="rgba(120, 53, 15, 0.22)"
+                    strokeWidth={0.45}
+                  />
+                </MapBase>
+              </div>
+            </div>
+
+            <form
+              className={`rounded-[2rem] border p-6 backdrop-blur-xl transition-all duration-300 sm:p-8 ${moodTone.panelClassName}`}
+              onSubmit={handleSubmit}
+            >
             <div className="space-y-6">
               <div className="flex items-center justify-between gap-4">
                 <div>
@@ -374,8 +413,9 @@ function App() {
                   Mood score <span className="font-black text-stone-900">{trackedScore}</span> tracked for today in <span className="font-black text-stone-900">{trackedCity}</span>.
                 </div>
               ) : null}
-            </div>
-          </form>
+          </div>
+            </form>
+        </div>
         </div>
       </section>
     </main>
