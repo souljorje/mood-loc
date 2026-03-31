@@ -3,10 +3,10 @@
 
 :root {
   font-family: "Instrument Sans", "Segoe UI", sans-serif;
-  color: #1c1917;
+  color: #172554;
   background:
-    radial-gradient(circle at top, rgba(251, 191, 36, 0.28), transparent 30%),
-    linear-gradient(135deg, #fff7ed 0%, #ffedd5 38%, #fed7aa 100%);
+    radial-gradient(circle at top, rgba(96, 165, 250, 0.26), transparent 32%),
+    linear-gradient(135deg, #eff6ff 0%, #dbeafe 42%, #bfdbfe 100%);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
