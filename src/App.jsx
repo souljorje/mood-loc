@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import '@d3-maps/react/index.css'
-import { MapBase, MapFeatures, MapGraticule, MapMesh } from '@d3-maps/react'
+import { MapBase, MapFeatures, MapGraticule, MapMarker, MapMesh, MapZoom } from '@d3-maps/react'
 import worldMapData from 'world-atlas/countries-110m.json'
 
 const STORAGE_KEY = 'mood-loc-record'
@@ -10,6 +10,42 @@ const shortcuts = [
   { label: 'Neutral', emoji: '😐', value: 5 },
   { label: 'Angry', emoji: '😠', value: 0 },
 ]
+
+function hasValidCoordinates(value) {
+  return (
+    value
+    && typeof value.latitude === 'number'
+    && Number.isFinite(value.latitude)
+    && typeof value.longitude === 'number'
+    && Number.isFinite(value.longitude)
+  )
+}
+
+function getMapCoordinates(value) {
+  if (!hasValidCoordinates(value)) {
+    return null
+  }
+
+  return [value.longitude, value.latitude]
+}
+
+function getRecordLocation(record) {
+  if (!record) {
+    return null
+  }
+
+  return {
+    city: record.city,
+    latitude: record.latitude,
+    longitude: record.longitude,
+  }
+}
+
+function getLocationMessageForRecord(record) {
+  return record?.city
+    ? `Saved location restored: ${record.city}.`
+    : 'Attach your current city to save this mood log.'
+}
 
 function getStoredRecord() {
   if (typeof window === 'undefined') {
@@ -32,6 +68,12 @@ function getStoredRecord() {
     const parsedRecord = JSON.parse(savedRecord)
     const hasValidScore = typeof parsedRecord.score === 'number'
     const hasValidCity = typeof parsedRecord.city === 'string' && parsedRecord.city.length > 0
+    const coordinates = hasValidCoordinates(parsedRecord)
+      ? {
+          latitude: parsedRecord.latitude,
+          longitude: parsedRecord.longitude,
+        }
+      : null
 
     if (!hasValidScore || !hasValidCity) {
       try {
@@ -46,6 +88,8 @@ function getStoredRecord() {
     return {
       score: parsedRecord.score,
       city: parsedRecord.city,
+      latitude: coordinates?.latitude ?? null,
+      longitude: coordinates?.longitude ?? null,
     }
   } catch {
     try {
@@ -64,7 +108,17 @@ function saveStoredRecord(record) {
   }
 
   try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(record))
+    const storedRecord = {
+      score: record.score,
+      city: record.city,
+    }
+
+    if (hasValidCoordinates(record)) {
+      storedRecord.latitude = record.latitude
+      storedRecord.longitude = record.longitude
+    }
+
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(storedRecord))
   } catch {
     // Ignore storage write failures so the tracker keeps working.
   }
@@ -90,9 +144,9 @@ function getMoodTone(score) {
       badge: 'Pick a score',
       helper: 'Enter a number from 0 to 10 or use a shortcut.',
       inputClassName:
-        'border-stone-300 bg-white/80 text-stone-900 shadow-[0_18px_45px_rgba(120,53,15,0.08)]',
-      accentClassName: 'bg-stone-200 text-stone-700',
-      panelClassName: 'border-white/70 bg-white/55',
+        'border-sky-200 bg-white/85 text-slate-900 shadow-[0_18px_45px_rgba(37,99,235,0.12)]',
+      accentClassName: 'bg-sky-100 text-sky-900',
+      panelClassName: 'border-white/70 bg-white/60',
       shouldShake: false,
     }
   }
@@ -159,33 +213,49 @@ async function resolveCityName(latitude, longitude) {
 }
 
 function App() {
-  const storedRecord = getStoredRecord()
-  const [scoreInput, setScoreInput] = useState(storedRecord ? String(storedRecord.score) : '')
-  const [trackedScore, setTrackedScore] = useState(storedRecord?.score ?? null)
-  const [trackedCity, setTrackedCity] = useState(storedRecord?.city ?? '')
-  const [currentCity, setCurrentCity] = useState(storedRecord?.city ?? '')
-  const [locationState, setLocationState] = useState(storedRecord?.city ? 'ready' : 'idle')
-  const [locationMessage, setLocationMessage] = useState(
-    storedRecord?.city
-      ? `Saved location restored: ${storedRecord.city}.`
-      : 'Attach your current city to save this mood log.',
-  )
-  
+  const [scoreInput, setScoreInput] = useState(() => {
+    const storedRecord = getStoredRecord()
+    return storedRecord ? String(storedRecord.score) : ''
+  })
+  const [trackedRecord, setTrackedRecord] = useState(() => getStoredRecord())
+  const [currentLocation, setCurrentLocation] = useState(() => getRecordLocation(getStoredRecord()))
+  const [locationState, setLocationState] = useState(() => getStoredRecord()?.city ? 'ready' : 'idle')
+  const [locationMessage, setLocationMessage] = useState(() => getLocationMessageForRecord(getStoredRecord()))
+
   const mapCardRef = useRef(null)
 
   const numericScore = scoreInput === '' ? null : Number(scoreInput)
   const moodTone = useMemo(() => getMoodTone(numericScore), [numericScore])
+  const trackedScore = trackedRecord?.score ?? null
+  const trackedCity = trackedRecord?.city ?? ''
+  const currentCity = currentLocation?.city ?? ''
+  const mapCoordinates = getMapCoordinates(currentLocation) ?? getMapCoordinates(trackedRecord)
 
   useEffect(() => {
-    if (trackedScore === null || !trackedCity) {
+    if (!trackedRecord) {
       return
     }
 
-    saveStoredRecord({
-      score: trackedScore,
-      city: trackedCity,
-    })
-  }, [trackedCity, trackedScore])
+    saveStoredRecord(trackedRecord)
+  }, [trackedRecord])
+
+  useEffect(() => {
+    function syncLocationFromStorage() {
+      const storedRecord = getStoredRecord()
+
+      setTrackedRecord(storedRecord)
+      setScoreInput(storedRecord ? String(storedRecord.score) : '')
+      setCurrentLocation(getRecordLocation(storedRecord))
+      setLocationState(storedRecord?.city ? 'ready' : 'idle')
+      setLocationMessage(getLocationMessageForRecord(storedRecord))
+    }
+
+    window.addEventListener('storage', syncLocationFromStorage)
+
+    return () => {
+      window.removeEventListener('storage', syncLocationFromStorage)
+    }
+  }, [])
 
   function handleScoreChange(event) {
     const digitsOnly = event.target.value.replace(/\D/g, '')
@@ -199,7 +269,7 @@ function App() {
   function handleLocationRequest() {
     if (!navigator.geolocation) {
       setLocationState('error')
-      setCurrentCity('')
+      setCurrentLocation(null)
       setLocationMessage('Geolocation is not supported in this browser.')
       return
     }
@@ -211,7 +281,11 @@ function App() {
       async ({ coords }) => {
         try {
           const city = await resolveCityName(coords.latitude, coords.longitude)
-          setCurrentCity(city)
+          setCurrentLocation({
+            city,
+            latitude: coords.latitude,
+            longitude: coords.longitude,
+          })
           setLocationState('ready')
           setLocationMessage(`Current location attached: ${city}.`)
         } catch {
@@ -242,12 +316,16 @@ function App() {
   function handleSubmit(event) {
     event.preventDefault()
 
-    if (numericScore === null || !currentCity) {
+    if (numericScore === null || !currentLocation) {
       return
     }
 
-    setTrackedScore(numericScore)
-    setTrackedCity(currentCity)
+    setTrackedRecord({
+      score: numericScore,
+      city: currentLocation.city,
+      latitude: currentLocation.latitude,
+      longitude: currentLocation.longitude,
+    })
     setLocationMessage(`Saved locally with location: ${currentCity}.`)
   }
 
@@ -257,7 +335,7 @@ function App() {
         <div className="w-full space-y-8">
           <div className="space-y-5">
             <h1 className="max-w-3xl text-5xl font-black leading-none text-stone-900 sm:text-6xl lg:text-7xl">
-              Hello, I&apos;m your personal mood tracker
+              Hi! I'm your personal mood tracker
             </h1>
             <p className="max-w-2xl text-lg leading-8 text-stone-700">
               Log today&apos;s mood with a simple score and explore the map
@@ -269,36 +347,51 @@ function App() {
           <div className="grid gap-10 lg:grid-cols-[minmax(0,1.45fr)_minmax(360px,0.75fr)] lg:items-stretch">
             <div className="pb-4">
               <div
-                className="w-full rounded-[2rem] border border-white/70 bg-white/65 p-5 shadow-2xl shadow-orange-950/10 backdrop-blur-xl"
+                className="w-full rounded-[2rem] border border-white/70 bg-white/65 p-5 shadow-2xl shadow-blue-950/10 backdrop-blur-xl"
                 ref={mapCardRef}
               >
                 <MapBase
                   aria-label="Mood-loc map viewport"
                   aspectRatio={16 / 9}
-                  className="block aspect-video h-auto w-full overflow-hidden rounded-[1.5rem] bg-[linear-gradient(180deg,_#fff7ed_0%,_#ffedd5_100%)]"
+                  className="block aspect-video h-auto w-full overflow-hidden rounded-[1.5rem] bg-[linear-gradient(180deg,_#eff6ff_0%,_#dbeafe_100%)]"
                   data={worldMapData}
                   height={900}
                   width={1600}
                 >
-                  <MapGraticule
-                    stroke="rgba(120, 53, 15, 0.12)"
-                    strokeWidth={0.6}
-                  />
-                  <MapFeatures
-                    fill="#fdba74"
-                    stroke="rgba(194, 65, 12, 0.52)"
-                    strokeWidth={0.55}
-                    styles={{
-                      default: { opacity: 0.96 },
-                      hover: { opacity: 0.82 },
-                      active: { opacity: 1 },
-                    }}
-                  />
-                  <MapMesh
-                    fill="none"
-                    stroke="rgba(120, 53, 15, 0.22)"
-                    strokeWidth={0.45}
-                  />
+                  {(context) => {
+                    const markerCenter = mapCoordinates ? context.projection(mapCoordinates) ?? undefined : undefined
+
+                    return (
+                      <MapZoom center={markerCenter} zoom={mapCoordinates ? 2.15 : 1} minZoom={1} maxZoom={6}>
+                        <MapGraticule
+                          stroke="rgba(30, 64, 175, 0.14)"
+                          strokeWidth={0.6}
+                        />
+                        <MapFeatures
+                          fill="#93c5fd"
+                          stroke="rgba(30, 64, 175, 0.5)"
+                          strokeWidth={0.55}
+                          styles={{
+                            default: { opacity: 0.96 },
+                            hover: { opacity: 0.82 },
+                            active: { opacity: 1 },
+                          }}
+                        />
+                        <MapMesh
+                          fill="none"
+                          stroke="rgba(30, 64, 175, 0.2)"
+                          strokeWidth={0.45}
+                        />
+                        {mapCoordinates ? (
+                          <MapMarker coordinates={mapCoordinates} name="saved-location-marker">
+                            <circle fill="rgba(59, 130, 246, 0.18)" r="24" />
+                            <circle cx="0" cy="0" fill="#2563eb" r="8" stroke="#eff6ff" strokeWidth="4" />
+                            <circle fill="none" r="16" stroke="rgba(37, 99, 235, 0.45)" strokeWidth="2" />
+                          </MapMarker>
+                        ) : null}
+                      </MapZoom>
+                    )
+                  }}
                 </MapBase>
               </div>
             </div>
